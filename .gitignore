@@ -1,0 +1,31 @@
+# Gradle distribution (extracted, not the wrapper)
+gradle-*/
+.gradle/
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+android/build/
+android/captures/
+android/.externalNativeBuild/
+*.iml
+.idea/
+
+# Server
+server/node_modules/
+server/dist/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temp
+*.zip
