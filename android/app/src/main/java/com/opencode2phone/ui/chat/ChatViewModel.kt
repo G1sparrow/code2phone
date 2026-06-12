@@ -10,6 +10,8 @@ import com.opencode2phone.di.ServerConfig
 import com.opencode2phone.domain.model.Message
 import com.opencode2phone.domain.model.MessageRole
 import com.opencode2phone.domain.model.OpencodeModel
+import com.opencode2phone.domain.model.ToolCallInfo
+import com.opencode2phone.domain.model.ToolResultInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
@@ -25,6 +27,9 @@ data class ChatUiState(
     val error: String? = null,
     val sessionId: String? = null,
     val streamingContent: String = "",
+    val streamingReasoning: String = "",
+    val streamingToolCalls: List<ToolCallInfo> = emptyList(),
+    val streamingToolResults: List<ToolResultInfo> = emptyList(),
     val models: List<OpencodeModel> = emptyList(),
     val selectedModel: OpencodeModel? = null,
     val showModelPicker: Boolean = false
@@ -116,7 +121,10 @@ class ChatViewModel @Inject constructor(
             inputText = "",
             isStreaming = true,
             error = null,
-            streamingContent = ""
+            streamingContent = "",
+            streamingReasoning = "",
+            streamingToolCalls = emptyList(),
+            streamingToolResults = emptyList()
         )
 
         viewModelScope.launch {
@@ -173,20 +181,45 @@ class ChatViewModel @Inject constructor(
             "reasoning" -> {
                 val text = event.part?.text ?: ""
                 _uiState.value = _uiState.value.copy(
-                    streamingContent = _uiState.value.streamingContent + text
+                    streamingReasoning = _uiState.value.streamingReasoning + text
+                )
+            }
+            "tool_call" -> {
+                val name = event.part?.name ?: "tool"
+                val input = event.part?.input?.let { serializeAny(it) } ?: "{}"
+                val call = ToolCallInfo(name = name, input = input)
+                _uiState.value = _uiState.value.copy(
+                    streamingToolCalls = _uiState.value.streamingToolCalls + call
+                )
+            }
+            "tool_result" -> {
+                val name = event.part?.name ?: "tool"
+                val output = event.part?.output?.let { serializeAny(it) } ?: ""
+                val result = ToolResultInfo(name = name, output = output)
+                _uiState.value = _uiState.value.copy(
+                    streamingToolResults = _uiState.value.streamingToolResults + result
                 )
             }
             "step_finish" -> {
                 val fullContent = _uiState.value.streamingContent
+                val reasoningContent = _uiState.value.streamingReasoning
+                val toolCalls = _uiState.value.streamingToolCalls
+                val toolResults = _uiState.value.streamingToolResults
+
                 val assistantMessage = Message(
                     id = event.messageID ?: UUID.randomUUID().toString(),
                     sessionId = _uiState.value.sessionId ?: "",
                     role = MessageRole.ASSISTANT,
                     content = fullContent,
+                    reasoning = reasoningContent.ifBlank { null },
+                    toolCalls = toolCalls,
+                    toolResults = toolResults,
                     createdAt = System.currentTimeMillis()
                 )
 
-                if (fullContent.isNotBlank()) {
+                val hasContent = fullContent.isNotBlank() || reasoningContent.isNotBlank() || toolCalls.isNotEmpty() || toolResults.isNotEmpty()
+
+                if (hasContent) {
                     viewModelScope.launch {
                         chatRepository.cacheMessage(
                             MessageEntity(
@@ -194,6 +227,9 @@ class ChatViewModel @Inject constructor(
                                 sessionId = assistantMessage.sessionId,
                                 role = "assistant",
                                 content = assistantMessage.content,
+                                reasoning = assistantMessage.reasoning,
+                                toolCallsJson = SessionRepository.toolCallsInfoToJson(toolCalls),
+                                toolResultsJson = SessionRepository.toolResultsInfoToJson(toolResults),
                                 createdAt = assistantMessage.createdAt
                             )
                         )
@@ -202,12 +238,18 @@ class ChatViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         messages = _uiState.value.messages + assistantMessage,
                         isStreaming = false,
-                        streamingContent = ""
+                        streamingContent = "",
+                        streamingReasoning = "",
+                        streamingToolCalls = emptyList(),
+                        streamingToolResults = emptyList()
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isStreaming = false,
-                        streamingContent = ""
+                        streamingContent = "",
+                        streamingReasoning = "",
+                        streamingToolCalls = emptyList(),
+                        streamingToolResults = emptyList()
                     )
                 }
             }
@@ -218,9 +260,20 @@ class ChatViewModel @Inject constructor(
                     error = errorMsg
                 )
             }
-            "tool_call", "tool_result", "step_start" -> {
-                // Ignore tool events for now
+            "step_start" -> {
+                // No display content
             }
+        }
+    }
+
+    private fun serializeAny(value: Any): String {
+        return when (value) {
+            is String -> value
+            is Number -> value.toString()
+            is Boolean -> value.toString()
+            is Map<*, *> -> org.json.JSONObject(value as Map<String, Any>).toString(2)
+            is List<*> -> org.json.JSONArray(value as List<Any>).toString(2)
+            else -> value.toString()
         }
     }
 
@@ -235,7 +288,8 @@ class ChatViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
+        streamingJob?.cancel()
         chatRepository.disconnect()
+        super.onCleared()
     }
 }

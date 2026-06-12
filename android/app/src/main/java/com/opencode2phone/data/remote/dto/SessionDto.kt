@@ -30,7 +30,22 @@ data class MessageDto(
     @Json(name = "id") val id: String,
     @Json(name = "role") val role: String,
     @Json(name = "content") val content: String,
+    @Json(name = "reasoning") val reasoning: String? = null,
+    @Json(name = "toolCalls") val toolCalls: List<ToolCallDto>? = null,
+    @Json(name = "toolResults") val toolResults: List<ToolResultDto>? = null,
     @Json(name = "createdAt") val createdAt: Long
+)
+
+@JsonClass(generateAdapter = true)
+data class ToolCallDto(
+    @Json(name = "name") val name: String,
+    @Json(name = "input") val input: String
+)
+
+@JsonClass(generateAdapter = true)
+data class ToolResultDto(
+    @Json(name = "name") val name: String,
+    @Json(name = "output") val output: String
 )
 
 @JsonClass(generateAdapter = true)

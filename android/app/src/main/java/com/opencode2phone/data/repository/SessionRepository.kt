@@ -8,8 +8,12 @@ import com.opencode2phone.data.remote.OpencodeApi
 import com.opencode2phone.domain.model.Message
 import com.opencode2phone.domain.model.MessageRole
 import com.opencode2phone.domain.model.Session
+import com.opencode2phone.domain.model.ToolCallInfo
+import com.opencode2phone.domain.model.ToolResultInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -81,6 +85,9 @@ class SessionRepository @Inject constructor(
                     sessionId = sessionId,
                     role = msgDto.role,
                     content = msgDto.content,
+                    reasoning = msgDto.reasoning,
+                    toolCallsJson = toolCallsListToJson(msgDto.toolCalls),
+                    toolResultsJson = toolResultsListToJson(msgDto.toolResults),
                     createdAt = msgDto.createdAt
                 )
                 messageDao.upsert(msgEntity)
@@ -112,6 +119,82 @@ class SessionRepository @Inject constructor(
         },
         content = content,
         reasoning = reasoning,
+        toolCalls = parseToolCallsJson(toolCallsJson),
+        toolResults = parseToolResultsJson(toolResultsJson),
         createdAt = createdAt
     )
+
+    companion object {
+        fun toolCallsListToJson(toolCalls: List<com.opencode2phone.data.remote.dto.ToolCallDto>?): String? {
+            if (toolCalls.isNullOrEmpty()) return null
+            return JSONArray(toolCalls.map {
+                JSONObject().apply {
+                    put("name", it.name)
+                    put("input", it.input)
+                }
+            }).toString()
+        }
+
+        fun toolResultsListToJson(toolResults: List<com.opencode2phone.data.remote.dto.ToolResultDto>?): String? {
+            if (toolResults.isNullOrEmpty()) return null
+            return JSONArray(toolResults.map {
+                JSONObject().apply {
+                    put("name", it.name)
+                    put("output", it.output)
+                }
+            }).toString()
+        }
+
+        fun toolCallsInfoToJson(toolCalls: List<ToolCallInfo>?): String? {
+            if (toolCalls.isNullOrEmpty()) return null
+            return JSONArray(toolCalls.map {
+                JSONObject().apply {
+                    put("name", it.name)
+                    put("input", it.input)
+                }
+            }).toString()
+        }
+
+        fun toolResultsInfoToJson(toolResults: List<ToolResultInfo>?): String? {
+            if (toolResults.isNullOrEmpty()) return null
+            return JSONArray(toolResults.map {
+                JSONObject().apply {
+                    put("name", it.name)
+                    put("output", it.output)
+                }
+            }).toString()
+        }
+
+        private fun parseToolCallsJson(json: String?): List<ToolCallInfo> {
+            if (json.isNullOrEmpty()) return emptyList()
+            return try {
+                val array = JSONArray(json)
+                (0 until array.length()).map { i ->
+                    val obj = array.getJSONObject(i)
+                    ToolCallInfo(
+                        name = obj.optString("name", ""),
+                        input = obj.optString("input", "{}")
+                    )
+                }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+        private fun parseToolResultsJson(json: String?): List<ToolResultInfo> {
+            if (json.isNullOrEmpty()) return emptyList()
+            return try {
+                val array = JSONArray(json)
+                (0 until array.length()).map { i ->
+                    val obj = array.getJSONObject(i)
+                    ToolResultInfo(
+                        name = obj.optString("name", ""),
+                        output = obj.optString("output", "")
+                    )
+                }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
 }

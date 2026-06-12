@@ -71,7 +71,7 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "opencode2phone.db"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides

@@ -33,6 +33,7 @@ export interface ChatRequest {
   model?: string;
   agent?: "plan" | "build";
   sessionId?: string;
+  sessionDir?: string;
   files?: string[];
 }
 
@@ -40,4 +41,31 @@ export interface ChatResponse {
   sessionId: string;
   messageId: string;
   content: string;
+}
+
+export interface OpencodeExportInfo {
+  id: string;
+  title: string;
+  time: { created: number; updated: number };
+  projectID: string;
+  directory: string;
+}
+
+export interface OpencodeExportPart {
+  type: string;
+  text?: string;
+  name?: string;
+  input?: unknown;
+  result?: unknown;
+  error?: string;
+}
+
+export interface OpencodeExportMessage {
+  info: { id: string; role: string; time: { created: number } };
+  parts: OpencodeExportPart[];
+}
+
+export interface OpencodeExport {
+  info: OpencodeExportInfo;
+  messages: OpencodeExportMessage[];
 }

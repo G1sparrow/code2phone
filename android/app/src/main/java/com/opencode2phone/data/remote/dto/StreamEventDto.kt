@@ -19,7 +19,10 @@ data class PartDto(
     @Json(name = "id") val id: String? = null,
     @Json(name = "sessionID") val sessionID: String? = null,
     @Json(name = "messageID") val messageID: String? = null,
-    @Json(name = "error") val error: String? = null
+    @Json(name = "error") val error: String? = null,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "input") val input: Any? = null,
+    @Json(name = "output") val output: Any? = null
 )
 
 @JsonClass(generateAdapter = true)

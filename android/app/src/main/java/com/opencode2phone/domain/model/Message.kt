@@ -6,7 +6,19 @@ data class Message(
     val role: MessageRole,
     val content: String,
     val reasoning: String? = null,
+    val toolCalls: List<ToolCallInfo> = emptyList(),
+    val toolResults: List<ToolResultInfo> = emptyList(),
     val createdAt: Long
+)
+
+data class ToolCallInfo(
+    val name: String,
+    val input: String
+)
+
+data class ToolResultInfo(
+    val name: String,
+    val output: String
 )
 
 enum class MessageRole {

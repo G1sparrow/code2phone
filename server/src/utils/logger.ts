@@ -9,9 +9,20 @@ const logLevel = process.env.LOG_LEVEL
   ? LogLevel[process.env.LOG_LEVEL as keyof typeof LogLevel] 
   : LogLevel.INFO;
 
+function safeStringify(obj: unknown): string {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(obj, (_key, value) => {
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) return "[Circular]";
+      seen.add(value);
+    }
+    return value;
+  });
+}
+
 function formatMessage(level: string, message: string, meta?: Record<string, unknown>): string {
   const timestamp = new Date().toISOString();
-  const metaStr = meta ? ` ${JSON.stringify(meta)}` : "";
+  const metaStr = meta ? ` ${safeStringify(meta)}` : "";
   return `[${timestamp}] [${level}] ${message}${metaStr}`;
 }
 

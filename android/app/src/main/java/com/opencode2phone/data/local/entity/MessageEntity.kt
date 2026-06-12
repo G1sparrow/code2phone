@@ -23,5 +23,7 @@ data class MessageEntity(
     val role: String,
     val content: String,
     val reasoning: String? = null,
+    val toolCallsJson: String? = null,
+    val toolResultsJson: String? = null,
     val createdAt: Long
 )

@@ -95,7 +95,6 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .navigationBarsPadding()
         ) {
             when {
                 uiState.isLoading -> {

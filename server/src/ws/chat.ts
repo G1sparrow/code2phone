@@ -8,6 +8,7 @@ import { StreamEvent, ChatRequest } from "../opencode/types";
 interface WSMessage {
   type: "init" | "user" | "ping";
   sessionId?: string;
+  sessionDir?: string;
   message?: string;
   model?: string;
   agent?: "plan" | "build";
@@ -25,6 +26,7 @@ const userSchema = z.object({
   model: z.string().optional(),
   agent: z.enum(["plan", "build"]).optional(),
   sessionId: z.string().optional(),
+  sessionDir: z.string().optional(),
   files: z.array(z.string()).optional(),
 });
 
@@ -83,6 +85,7 @@ export function setupChatWebSocket(wss: WebSocketServer): void {
             model: userResult.data.model,
             agent: userResult.data.agent,
             sessionId: currentSessionId || userResult.data.sessionId,
+            sessionDir: userResult.data.sessionDir,
             files: userResult.data.files,
           };
 
@@ -119,6 +122,9 @@ export function setupChatWebSocket(wss: WebSocketServer): void {
 
     ws.on("close", (code, reason) => {
       logger.info("WebSocket disconnected", { code, reason: reason.toString() });
+      opencodeClient.removeAllListeners("event");
+      opencodeClient.removeAllListeners("error");
+      opencodeClient.removeAllListeners("close");
       opencodeClient.stop();
     });
 
